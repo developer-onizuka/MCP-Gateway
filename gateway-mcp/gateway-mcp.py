@@ -48,16 +48,22 @@ active_sessions: dict[str, ClientSession] = {}
 tool_router: dict[str, ClientSession] = {}
 
 # ========================================================
-# ガードレール定義
+# ガードレール定義（NGワード「うんこ」等の設定）
 # ========================================================
 async def check_input_guardrail(tool_name: str, arguments: dict) -> tuple[bool, str]:
     logger.info(f"🔍 [Guardrail Input Check] Tool: {tool_name}, Args: {arguments}")
+    
+    # ブロックしたいNGワードのリスト
+    ng_words = ["うんこ", "ignore previous instructions", "これまでの指示を無視"]
+    
     for key, val in arguments.items():
         if isinstance(val, str):
             text_lower = val.lower()
-            if "ignore previous instructions" in text_lower or "これまでの指示を無視" in text_lower:
-                logger.warning(f"🚨 [Guardrail Blocked] Input blocked for tool {tool_name}")
-                return False, "プロンプトインジェクションの可能性を検知しました。"
+            for ng in ng_words:
+                if ng.lower() in text_lower:
+                    logger.warning(f"🚨 [Guardrail Blocked] NG word '{ng}' detected in argument '{key}' for tool {tool_name}")
+                    return False, f"禁止ワード '{ng}' が検知されたため、入力をブロックしました。"
+                    
     return True, ""
 
 async def check_output_guardrail(tool_name: str, result_text: str) -> tuple[bool, str]:
@@ -94,9 +100,7 @@ async def handle_call_tool(*args, **kwargs) -> types.CallToolResult:
     name = None
     arguments = {}
 
-    # 1. 渡された引数 (args, kwargs) を徹底的に解析して name と arguments を取り出す
     for arg in args:
-        # Pydanticモデルやオブジェクトの場合 (CallToolRequest など)
         if hasattr(arg, "params"):
             params = arg.params
             if hasattr(params, "name") and params.name:
@@ -104,13 +108,11 @@ async def handle_call_tool(*args, **kwargs) -> types.CallToolResult:
             if hasattr(params, "arguments") and params.arguments is not None:
                 arguments = params.arguments
         
-        # 辞書型の場合
         if isinstance(arg, dict):
             if "name" in arg and not name:
                 name = arg["name"]
             if "arguments" in arg and arg["arguments"]:
                 arguments = arg["arguments"]
-            # 直接パラメータがキーとして入っている場合（稀なケースのフォールバック）
             if "params" in arg and isinstance(arg["params"], dict):
                 p = arg["params"]
                 if "name" in p and not name:
@@ -118,7 +120,6 @@ async def handle_call_tool(*args, **kwargs) -> types.CallToolResult:
                 if "arguments" in p and p["arguments"]:
                     arguments = p["arguments"]
 
-        # 直接 name や arguments 属性を持つオブジェクトの場合
         if hasattr(arg, "name") and not name:
             name = getattr(arg, "name")
         if hasattr(arg, "arguments") and not arguments:
@@ -126,13 +127,11 @@ async def handle_call_tool(*args, **kwargs) -> types.CallToolResult:
             if arg_val:
                 arguments = arg_val
 
-    # kwargs からの取得
     if not name and "name" in kwargs:
         name = kwargs["name"]
     if not arguments and "arguments" in kwargs and kwargs["arguments"]:
         arguments = kwargs["arguments"]
 
-    # それでも取れない場合、args[0] が文字列（ツール名）で args[1] が辞書（引数）のパターンを想定
     if not name and len(args) > 0 and isinstance(args[0], str):
         name = args[0]
     if not arguments and len(args) > 1 and isinstance(args[1], dict):
@@ -275,7 +274,7 @@ async def lifespan(app: Starlette):
 
 app = Starlette(
     routes=[
-        Route("/sse", endpoint=endpoint_sse, methods=["GET"]),
+        Route("/sse", endpoint=endpoint_sse, methods=["GET"]),  # ⬅️ カッコを正しく閉じました
         Mount("/messages/", app=sse.handle_post_message),
     ],
     lifespan=lifespan,
