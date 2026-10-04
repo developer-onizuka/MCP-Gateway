@@ -41,6 +41,16 @@ except json.JSONDecodeError:
 if not backend_configs:
     logger.warning("⚠️ No backend servers configured. Gateway will start without routing any tools.")
 
+# 🔻 ConfigMap / 環境変数から Input 用 NG ワードをロード
+NG_WORDS_ENV = os.getenv("GUARDRAIL_NG_WORDS", "ignore previous instructions,これまでの指示を無視")
+NG_WORDS = [word.strip() for word in NG_WORDS_ENV.split(",") if word.strip()]
+logger.info(f"🛡️ Loaded Input NG Words: {NG_WORDS}")
+
+# 🔻 ConfigMap / 環境変数から Output 用機密ワードをロード
+SECRET_WORDS_ENV = os.getenv("GUARDRAIL_SECRET_WORDS", "SECRET_PASSWORD")
+SECRET_WORDS = [word.strip() for word in SECRET_WORDS_ENV.split(",") if word.strip()]
+logger.info(f"🛡️ Loaded Output Secret Words: {SECRET_WORDS}")
+
 # ========================================================
 # アプリケーション状態 (ルーティング管理)
 # ========================================================
@@ -48,18 +58,15 @@ active_sessions: dict[str, ClientSession] = {}
 tool_router: dict[str, ClientSession] = {}
 
 # ========================================================
-# ガードレール定義（NGワード「うんこ」等の設定）
+# ガードレール定義（ConfigMapからロードしたリストを使用）
 # ========================================================
 async def check_input_guardrail(tool_name: str, arguments: dict) -> tuple[bool, str]:
     logger.info(f"🔍 [Guardrail Input Check] Tool: {tool_name}, Args: {arguments}")
     
-    # ブロックしたいNGワードのリスト
-    ng_words = ["うんこ", "ignore previous instructions", "これまでの指示を無視"]
-    
     for key, val in arguments.items():
         if isinstance(val, str):
             text_lower = val.lower()
-            for ng in ng_words:
+            for ng in NG_WORDS:
                 if ng.lower() in text_lower:
                     logger.warning(f"🚨 [Guardrail Blocked] NG word '{ng}' detected in argument '{key}' for tool {tool_name}")
                     return False, f"禁止ワード '{ng}' が検知されたため、入力をブロックしました。"
@@ -68,9 +75,12 @@ async def check_input_guardrail(tool_name: str, arguments: dict) -> tuple[bool, 
 
 async def check_output_guardrail(tool_name: str, result_text: str) -> tuple[bool, str]:
     logger.info(f"🔍 [Guardrail Output Check] Tool: {tool_name}")
-    if "SECRET_PASSWORD" in result_text:
-        logger.warning(f"🚨 [Guardrail Blocked] Output masked for tool {tool_name}")
-        return False, "機密情報が含まれていたためマスクしました。"
+    
+    for secret in SECRET_WORDS:
+        if secret in result_text:
+            logger.warning(f"🚨 [Guardrail Blocked] Secret word '{secret}' detected in output for tool {tool_name}")
+            return False, f"機密情報（'{secret}'）が含まれていたためマスクしました。"
+            
     return True, ""
 
 # ========================================================
@@ -274,7 +284,7 @@ async def lifespan(app: Starlette):
 
 app = Starlette(
     routes=[
-        Route("/sse", endpoint=endpoint_sse, methods=["GET"]),  # ⬅️ カッコを正しく閉じました
+        Route("/sse", endpoint=endpoint_sse, methods=["GET"]),
         Mount("/messages/", app=sse.handle_post_message),
     ],
     lifespan=lifespan,

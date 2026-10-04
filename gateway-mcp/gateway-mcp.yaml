@@ -9,6 +9,8 @@ data:
     {
       "graphrag-mcp": "http://svc-graphrag-mcp:5001/sse"
     }
+  GUARDRAIL_NG_WORDS: "うんこ,デブ,ブサイク,ignore previous instructions,これまでの指示を無視"
+  GUARDRAIL_SECRET_WORDS: "社外秘,機密,パスワード,SECRET_PASSWORD"
 
 ---
 apiVersion: apps/v1
@@ -29,8 +31,8 @@ spec:
     spec:
       containers:
         - name: gateway-mcp
-          image: developeronizuka/gateway-mcp:1.0.0
-          imagePullPolicy: Always
+          image: developeronizuka/gateway-mcp:1.0.1
+          #imagePullPolicy: Always
           ports:
             - containerPort: 5001
               name: http-sse
@@ -42,6 +44,16 @@ spec:
                 configMapKeyRef:
                   name: gateway-mcp-config
                   key: backends.json
+            - name: GUARDRAIL_NG_WORDS
+              valueFrom:
+                configMapKeyRef:
+                  name: gateway-mcp-config
+                  key: GUARDRAIL_NG_WORDS
+            - name: GUARDRAIL_SECRET_WORDS
+              valueFrom:
+                configMapKeyRef:
+                  name: gateway-mcp-config
+                  key: GUARDRAIL_SECRET_WORDS
           resources:
             requests:
               cpu: "100m"
