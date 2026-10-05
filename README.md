@@ -63,3 +63,9 @@ AIエージェントの普及に伴い、外部データソースや社内シス
 +-------------------------------+           +-------------------------------+
 ```
 
+<img src="https://github.com/developer-onizuka/MCP-Gateway/blob/main/Guardrail1.png" width="720"><br>
+
+<img src="https://github.com/developer-onizuka/MCP-Gateway/blob/main/Guardrail2.png" width="720"><br>
+
+<img src="https://github.com/developer-onizuka/MCP-Gateway/blob/main/Guardrail3.png" width="720"><br>
+
