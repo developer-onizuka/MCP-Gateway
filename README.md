@@ -65,13 +65,18 @@ AIエージェントの普及に伴い、外部データソースや社内シス
 
 ### 3. Setup
 
-#### 3-1. Gateway機能を持つMCPサーバーのコンテナ化
+#### 3-1. Gateway機能を持つMCPサーバーのコンテナ化 & Yamlファイルの展開
+コンテナをビルドし、DockerhubにPushします。
 ```
 sudo docker build --no-cache . -t developeronizuka/gateway-mcp:1.0.1
 sudo docker push developeronizuka/gateway-mcp:1.0.1
 ```
+Yamlファイルを展開します。
+```
+kubectl apply - f gateway-mcp.yaml
+```
 
-#### 3-2. GraphRAGのKubernetes上への展開とサービス設定の変更
+#### 3-2. GraphRAGのKubernetes上への展開とサービス設定の変更 & Yamlファイルの展開
 
 1. **リポジトリの参照**
 [developer-onizuka/RAG](https://github.com/developer-onizuka/RAG) の手順を参照し、GraphRAGをKubernetes上に展開します。
@@ -100,10 +105,15 @@ spec:
       targetPort: 8080
 
 ```
+このYamlファイルを展開します。
+```
+kubectl apply - f graphrag-mcp.yaml
+```
 
 この構成により、GraphRAGはクラスタ内の `svc-graphrag-mcp`（ClusterIP）として安全に待機し、先ほど作成した `gateway-mcp` がフロントエンドとしてそのトラフィックとセキュリティ（ガードレール）を一元管理できるようになります。
 
-
+### 4. Execution
+今回は、MCP Gatewayを挟んで、GraphRAGによるナレッジグラフの登録になります。その際、NGワードに該当する文章を送信・登録しようとした場合でも、MCP Gatewayの入力ガードレール機能によって自動的に検知・ブロックされ、バックエンドのGraphRAGへ不正なデータや不適切な指示が到達するのを防ぐ挙動を確認します。
 
 <img src="https://github.com/developer-onizuka/MCP-Gateway/blob/main/Guardrail1.png" width="720"><br>
 
