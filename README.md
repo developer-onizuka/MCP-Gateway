@@ -121,3 +121,54 @@ kubectl apply - f graphrag-mcp.yaml
 
 <img src="https://github.com/developer-onizuka/MCP-Gateway/blob/main/Guardrail3.png" width="720"><br>
 
+### 5. 付録 (AWS AgentCoreにおけるGuradrail機能の実装)
+
+```
+[User / AI] 
+       │ 
+       ▼ (1) Tool Call Request
+┌────────────────────────────────────────────────────────┐
+│ [ AgentCore Gateway (Execution Infrastructure) ]       │
+│                                                        │
+│   │ (2) Send input data and ask: "Is this safe?"       │
+│   ▼                                                    │
+│ ┌──────────────────────────────────────────────────┐   │
+│ │ [ AgentCore Guardrail (Rule Definition) ]        │   │
+│ │   - Bedrock Guardrails (Content & PII Check)     │   │
+│ │   - Cedar Policies (Authorization & Arg Check)   │   │
+│ └──────────────────────────────────────────────────┘   │
+│   │ (3) Judgment Result: "NG (Reason: Blocked Word)"   │
+│   ▼                                                    │
+│  [!! Block Communication Immediately !]                │
+│                                                        │
+└────────────────────────────────────────────────────────┘
+       │
+       ▼ (4) No communication reaches the backend (MCP Server);
+             Gateway immediately returns a custom error to the user
+```
+
+このシーケンスは、ユーザーやAIエージェントからのツール呼び出しリクエストを **AgentCore Gateway（実行インフラ）** がインターセプト（横取り）し、**AgentCore Guardrail（ルール定義）** による多角的な安全・認可チェックを経て、危険な通信を即座に遮断する流れを表しています。
+
+---
+
+## ステップごとの詳細解説
+
+* **(1) Tool Call Request（ツール呼び出しリクエスト）**
+* ユーザーまたはAIエージェントが、外部ツール（MCPサーバーなど）を実行するためのリクエストを送信します。
+
+
+* **(2) Send input data and ask: "Is this safe?"（Gatewayによる検査依頼）**
+* リクエストは直接バックエンドには向かわず、通信経路上にある **AgentCore Gateway** に捕捉されます。
+* Gatewayは入力データ（プロンプトやツールの引数）を **AgentCore Guardrail** へ渡し、評価を仰ぎます。
+* Guardrail側では、以下の2つのエンジンが連携して審査を行います。
+* **Bedrock Guardrails**: 有害表現やプロンプトインジェクション、PII（個人情報）などのコンテンツ安全性をチェック。
+* **Cedar Policies**: 誰がそのツールを実行してよいかの認可（Authorization）や、引数の値がルールに違反していないかをチェック。
+
+* **(3) Judgment Result: "NG" & Block（判定と即座の遮断）**
+* チェックの結果、禁止ワードの検出やポリシー違反などにより「NG」と判定されると、その結果がGatewayへ返却されます。
+* 判定を受けたGatewayは、**その場で通信を強制的に遮断**します。
+
+* **(4) Backend Protection & Error Return（バックエンドの保護とエラー返却）**
+* 不正なリクエストはバックエンド（MCPサーバーなどの実体）に**一歩も到達しません**。
+* Gatewayがユーザー側へカスタムエラーメッセージを即座に返し、システム全体の安全を守ります。
+
