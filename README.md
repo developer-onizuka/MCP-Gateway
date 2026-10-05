@@ -1,4 +1,4 @@
-### 0. Goal
+### 0. Goal & Overview
 
 AIエージェントの普及に伴い、外部データソースや社内システムと連携するための **Model Context Protocol (MCP)** の利用が急拡大しています。しかし、実運用においては以下のような課題に直面します。
 
@@ -63,15 +63,15 @@ AIエージェントの普及に伴い、外部データソースや社内シス
 +-------------------------------+           +-------------------------------+
 ```
 
-### 2. MCPサーバーのコンテナ化
+### 3. Setup
+
+#### 3-1. Gateway機能を持つMCPサーバーのコンテナ化
 ```
 sudo docker build --no-cache . -t developeronizuka/gateway-mcp:1.0.1
 sudo docker push developeronizuka/gateway-mcp:1.0.1
 ```
 
-### 3. GraphRAGの展開
-
-#### 3-1. GraphRAGのKubernetes上への展開とサービス設定の変更
+#### 3-2. GraphRAGのKubernetes上への展開とサービス設定の変更
 
 1. **リポジトリの参照**
 [developer-onizuka/RAG](https://github.com/developer-onizuka/RAG) の手順を参照し、GraphRAGをKubernetes上に展開します。
