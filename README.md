@@ -63,6 +63,48 @@ AIエージェントの普及に伴い、外部データソースや社内シス
 +-------------------------------+           +-------------------------------+
 ```
 
+### 2. MCPサーバーのコンテナ化
+```
+sudo docker build --no-cache . -t developeronizuka/gateway-mcp:1.0.1
+sudo docker push developeronizuka/gateway-mcp:1.0.1
+```
+
+### 3. GraphRAGの展開
+
+#### 3-1. GraphRAGのKubernetes上への展開とサービス設定の変更
+
+1. **リポジトリの参照**
+[developer-onizuka/RAG](https://github.com/developer-onizuka/RAG) の手順を参照し、GraphRAGをKubernetes上に展開します。
+2. **Kubernetesマニフェスト（`graphrag-mcp.yaml`）の調整**
+リポジトリ内で提供されている [graphrag-mcp.yaml](https://github.com/developer-onizuka/RAG/blob/main/graphrag-mcp.yaml) の Service 定義において、`type: LoadBalancer` の行をコメントアウト（または削除）してください。
+> **変更の理由**
+> 今回構築する **MCP Gateway** をフロントに挟み、クラスタ内のプライベートネットワーク（`ClusterIP`）経由で安全にルーティング・接続することを目的としているためです。外部へ直接公開する必要がないため、デフォルトの `ClusterIP` として動作させます。
+
+#### 修正後のYAML設定例
+
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: svc-graphrag-mcp
+spec:
+  # type: LoadBalancer  # 外部公開用ではなく内部ルーティング（ClusterIP）にするためコメントアウト
+  selector:
+    app: graphrag-mcp
+  ports:
+    - name: mcp-sse
+      port: 5001
+      targetPort: 5001
+    - name: web-ui
+      port: 8080
+      targetPort: 8080
+
+```
+
+この構成により、GraphRAGはクラスタ内の `svc-graphrag-mcp`（ClusterIP）として安全に待機し、先ほど作成した `gateway-mcp` がフロントエンドとしてそのトラフィックとセキュリティ（ガードレール）を一元管理できるようになります。
+
+
+
 <img src="https://github.com/developer-onizuka/MCP-Gateway/blob/main/Guardrail1.png" width="720"><br>
 
 <img src="https://github.com/developer-onizuka/MCP-Gateway/blob/main/Guardrail2.png" width="720"><br>
