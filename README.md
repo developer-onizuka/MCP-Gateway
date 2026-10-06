@@ -121,7 +121,7 @@ kubectl apply - f graphrag-mcp.yaml
 
 <img src="https://github.com/developer-onizuka/MCP-Gateway/blob/main/Guardrail3.png" width="720"><br>
 
-### 5. 付録 (AWS AgentCoreにおけるGuradrail機能の実装)
+### 付録1. AWS AgentCoreにおけるGuradrail機能の実装
 
 ```
  [User / AI] 
@@ -168,6 +168,8 @@ kubectl apply - f graphrag-mcp.yaml
 * 不正なリクエストはバックエンド（MCPサーバーなどの実体）に**到達しません**。
 * Gatewayがユーザー側へカスタムエラーメッセージを即座に返し、システム全体の安全を守ります。
 
+
+### 付録2. 単体機能としての Bedrock Guardrails
 なお、以下がGuardrailを単体で使った時の実装例です。Gatewayがない環境で Bedrock Guardrails を使おうとすると、通常は次のようなプログラム（Pythonなど）を自前で書くことになります。
 ```
 import boto3
