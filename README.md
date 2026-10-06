@@ -124,24 +124,24 @@ kubectl apply - f graphrag-mcp.yaml
 ### 5. 付録 (AWS AgentCoreにおけるGuradrail機能の実装)
 
 ```
-[User / AI] 
+ [User / AI] 
        │ 
-       ▼ (1) Tool Call Request
-┌────────────────────────────────────────────────────────┐
-│ [ AgentCore Gateway (Execution Infrastructure) ]       │
-│                                                        │
-│   │ (2) Send input data and ask: "Is this safe?"       │
-│   ▼                                                    │
-│ ┌──────────────────────────────────────────────────┐   │
-│ │ [ AgentCore Guardrail (Rule Definition) ]        │   │
-│ │   - Bedrock Guardrails (Content & PII Check)     │   │
-│ │   - Cedar Policies (Authorization & Arg Check)   │   │
-│ └──────────────────────────────────────────────────┘   │
-│   │ (3) Judgment Result: "NG (Reason: Blocked Word)"   │
-│   ▼                                                    │
-│  [!! Block Communication Immediately !]                │
-│                                                        │
-└────────────────────────────────────────────────────────┘
+       │ (1) Tool Call Request
+┌──────▼────────────────────────────────────────────────---─┐
+│  [ AgentCore Gateway (Execution Infrastructure) ]         │
+│      │                                                    │
+│      │ (2) Send input data and ask: "Is this safe?"       │
+│      │                                                    │
+│   ┌──▼───────────────────────────────────────────────┐    │
+│   │ [ AgentCore Guardrail (Rule Definition) ]        │    │
+│   │   - Bedrock Guardrails (Content & PII Check)     │    │
+│   │   - Cedar Policies (Authorization & Arg Check)   │    │
+│   └──────────────────────────────────────────────────┘    │
+│      │ (3) Judgment Result: "NG (Reason: Blocked Word)"   │
+│      ▼                                                    │
+│  [!! Block Communication Immediately !]                   │
+│      │                                                    │
+└──────│────────────────────────────────────────────────---─┘
        │
        ▼ (4) No communication reaches the backend (MCP Server);
              Gateway immediately returns a custom error to the user
@@ -168,3 +168,29 @@ kubectl apply - f graphrag-mcp.yaml
 * 不正なリクエストはバックエンド（MCPサーバーなどの実体）に**到達しません**。
 * Gatewayがユーザー側へカスタムエラーメッセージを即座に返し、システム全体の安全を守ります。
 
+なお、以下がGuardrailを単体で使った時の実装例です。Gatewayがない環境で Bedrock Guardrails を使おうとすると、通常は次のようなプログラム（Pythonなど）を自前で書くことになります。
+```
+import boto3
+
+client = boto3.client('bedrock-runtime')
+
+# ユーザーからの入力を受け取る
+user_input = "私のパスワードは secret123 です。"
+
+# 【単体としてのGuardrailsを呼び出す】
+response = client.apply_guardrail(
+    guardrailIdentifier='your-guardrail-id',
+    guardrailVersion='DRAFT',
+    source='INPUT',
+    text=[user_input]
+)
+
+# 判定結果を確認
+action = response['action'] # 'NONE' (安全) または 'GUARDRAIL_INTERVENED' (ブロック)
+
+if action == 'GUARDRAIL_INTERVENED':
+    print("ガードレールに引っかかりました！処理を中断します。")
+else:
+    # 安全なのでLLMへ処理を続行
+    pass
+```
