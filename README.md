@@ -1,4 +1,4 @@
-### 0. Goal & Overview
+# 0. Goal & Overview
 
 AIエージェントの普及に伴い、外部データソースや社内システムと連携するための **Model Context Protocol (MCP)** の利用が急拡大しています。しかし、実運用においては以下のような課題に直面します。
 
@@ -8,19 +8,19 @@ AIエージェントの普及に伴い、外部データソースや社内シス
 本リポジトリで提供する **`gateway-mcp`** は、こうしたエンタープライズ環境におけるMCPの運用課題を解決するため、「ツールのアグリゲーション（集約）」**と**「インライン・ガードレール（セキュリティ統制）」を軽量なPython/Starlette製アーキテクチャで実現することを目的としています。
 
 
-### 1. Key Features
+# 1. Key Features
 
-#### 1-1. 複数バックエンドの動的ツール集約 (Tool Aggregation)
+### 1-1. 複数バックエンドの動的ツール集約 (Tool Aggregation)
 * 起動時に複数のMCPサーバー（SSEベース）へ接続し、提供されるすべてのツールを自動で集約（Aggregation）。
 * LLMクライアントからは「たった1つのMCPサーバー」に接続しているように見せかけつつ、裏側で適切なバックエンドへ自動ルーティングします。
 
 
-#### 1-2. リアルタイム・ガードレール （入力・出力統制）
+### 1-2. リアルタイム・ガードレール （入力・出力統制）
 * **入力チェック:** 引数に含まれる文字列をスキャンし、禁止ワード（プロンプトインジェクションや不正な指示の兆候）が検知された場合は処理を即座にブロック。
 * **出力チェック:** バックエンドからの応答テキストを監視し、機密キーワード（パスワードや秘匿情報）の露出を検知・マスク。
 
 
-#### 1-3. クラウドネイティブな設定管理 (Environment-driven)
+### 1-3. クラウドネイティブな設定管理 (Environment-driven)
 * Kubernetesの `ConfigMap` や環境変数（`BACKEND_SERVERS`, `GUARDRAIL_NG_WORDS` 等）から動的に設定を読み込めるため、コードを改修することなく柔軟にセキュリティポリシーやバックエンド構成を変更可能。
 
 ```
@@ -63,9 +63,9 @@ AIエージェントの普及に伴い、外部データソースや社内シス
 +-------------------------------+           +-------------------------------+
 ```
 
-### 3. Setup
+# 3. Setup
 
-#### 3-1. Gateway機能を持つMCPサーバーのコンテナ化 & Yamlファイルの展開
+### 3-1. Gateway機能を持つMCPサーバーのコンテナ化 & Yamlファイルの展開
 コンテナをビルドし、DockerhubにPushします。
 ```
 sudo docker build --no-cache . -t developeronizuka/gateway-mcp:1.0.1
@@ -83,7 +83,7 @@ kubectl apply - f gateway-mcp.yaml
 | **`GUARDRAIL_NG_WORDS`** | LLM クライアントからの入力（ツール引数）を監視・ブロックするキーワード一覧です。<br><br>カンマ区切りで指定します。公序良俗に反する単語のほか、プロンプトインジェクションを防ぐための定型句を登録し、不正な指示がバックエンドへ到達するのを防ぎます。 |
 | **`GUARDRAIL_SECRET_WORDS`** | バックエンド（GraphRAG など）からの出力テキストを監視・マスクする機密キーワード一覧です。<br><br>検索結果やデータベースの応答に社外秘データやパスワードなどの機密情報が混入していないかをスキャンし、情報漏洩を未然にブロックします。 |
 
-#### 3-2. GraphRAGのKubernetes上への展開とサービス設定の変更 & Yamlファイルの展開
+### 3-2. GraphRAGのKubernetes上への展開とサービス設定の変更 & Yamlファイルの展開
 
 1. **リポジトリの参照**
 [developer-onizuka/RAG](https://github.com/developer-onizuka/RAG) の手順を参照し、GraphRAGをKubernetes上に展開します。
@@ -92,7 +92,7 @@ kubectl apply - f gateway-mcp.yaml
 > **変更の理由**
 > 今回構築する **MCP Gateway** をフロントに挟み、クラスタ内のプライベートネットワーク（`ClusterIP`）経由で安全にルーティング・接続することを目的としているためです。外部へ直接公開する必要がないため、デフォルトの `ClusterIP` として動作させます。
 
-#### 修正後のYAML設定例
+### 修正後のYAML設定例
 
 ```yaml
 apiVersion: v1
@@ -119,7 +119,7 @@ kubectl apply - f graphrag-mcp.yaml
 
 この構成により、GraphRAGはクラスタ内の `svc-graphrag-mcp`（ClusterIP）として安全に待機し、先ほど作成した `gateway-mcp` がフロントエンドとしてそのトラフィックとセキュリティ（ガードレール）を一元管理できるようになります。
 
-### 4. Execution
+# 4. Execution
 今回は、MCP Gatewayを挟んで、GraphRAGによるナレッジグラフの登録になります。その際、NGワードに該当する文章を送信・登録しようとした場合でも、MCP Gatewayの入力ガードレール機能によって自動的に検知・ブロックされ、バックエンドのGraphRAGへ不正なデータや不適切な指示が到達するのを防ぐ挙動を確認します。
 
 <img src="https://github.com/developer-onizuka/MCP-Gateway/blob/main/Guardrail1.png" width="720"><br>
@@ -128,7 +128,7 @@ kubectl apply - f graphrag-mcp.yaml
 
 <img src="https://github.com/developer-onizuka/MCP-Gateway/blob/main/Guardrail3.png" width="720"><br>
 
-### 付録1. AWS AgentCoreにおけるGuradrail機能の実装
+# 付録1. AWS AgentCoreにおけるGuradrail機能の実装
 
 ```
  [User / AI] 
@@ -176,7 +176,7 @@ kubectl apply - f graphrag-mcp.yaml
 * Gatewayがユーザー側へカスタムエラーメッセージを即座に返し、システム全体の安全を守ります。
 
 
-### 付録2. 単体機能としての Bedrock Guardrails
+# 付録2. 単体機能としての Bedrock Guardrails
 なお、以下がGuardrailを単体で使った時の実装例です。Gatewayがない環境で Bedrock Guardrails を使おうとすると、通常は次のようなプログラム（Pythonなど）を自前で書くことになります。
 ```
 import boto3
