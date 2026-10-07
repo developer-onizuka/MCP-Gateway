@@ -129,7 +129,7 @@ kubectl apply - f graphrag-mcp.yaml
 <img src="https://github.com/developer-onizuka/MCP-Gateway/blob/main/Guardrail3.png" width="720"><br>
 
 # 付録1. AWS AgentCoreにおけるGuradrail機能の実装
-
+ここまでの解説を踏まえ、AWS AgentCore環境におけるGatewayとGuardrailが連携したリクエスト制御の具体的な動作メカニズムを、補足資料として以下に整理します。
 ```
  [User / AI] 
        │ 
